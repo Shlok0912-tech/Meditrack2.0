@@ -475,14 +475,48 @@ const Index = () => {
                       onUpdate={handleUpdateMedicine}
                       onClose={() => setEditMedicineForDialog(null)}
                     />
-                    <Button variant="outline" size="sm" onClick={() => exportMedicinesCsv()} className="hover:animate-glow touch-target">
+                    <Button variant="outline" size="sm" onClick={() => {
+                      try {
+                        exportMedicinesCsv();
+                        toast({
+                          title: "Export Successful",
+                          description: "Medicines exported to CSV file",
+                        });
+                      } catch (error) {
+                        console.error('Export error:', error);
+                        toast({
+                          title: "Export Failed",
+                          description: "Failed to export medicines",
+                          variant: "destructive",
+                        });
+                      }
+                    }} className="hover:animate-glow touch-target">
                       Export
                     </Button>
                     <input id="import-medicines" type="file" accept=".csv,text/csv" className="hidden" onChange={async (e) => {
                       const file = e.currentTarget.files?.[0];
                       if (!file) return;
-                      await importMedicinesCsv(file);
-                      window.location.reload();
+                      try {
+                        const count = await importMedicinesCsv(file);
+                        const [updatedMedicines, updatedLogs] = await Promise.all([
+                          storage.getMedicines(),
+                          storage.getMedicineLogs()
+                        ]);
+                        setMedicines(updatedMedicines);
+                        setMedicineLogs(updatedLogs);
+                        toast({
+                          title: "Import Successful",
+                          description: `Imported ${count} medicines from CSV`,
+                        });
+                        e.currentTarget.value = ''; // Reset input
+                      } catch (error) {
+                        console.error('Import error:', error);
+                        toast({
+                          title: "Import Failed",
+                          description: "Failed to import medicines. Please check CSV format.",
+                          variant: "destructive",
+                        });
+                      }
                     }} />
                     <Button variant="outline" size="sm" onClick={() => document.getElementById('import-medicines')?.click()} className="hover:animate-glow touch-target">
                       Import

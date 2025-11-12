@@ -162,12 +162,14 @@ export async function exportMedicinesCsv(): Promise<void> {
   downloadTextFile(
     'medicines.csv',
     toCsv(
-      ['name', 'totalStock', 'currentStock', 'dosage', 'notes'],
+      ['name', 'totalStock', 'currentStock', 'dosage', 'schedule', 'category', 'notes'],
       medicines.map(m => ({
         name: m.name,
         totalStock: m.totalStock,
         currentStock: m.currentStock,
-        dosage: m.dosage,
+        dosage: m.dosage ?? '',
+        schedule: m.schedule ?? '',
+        category: m.category ?? '',
         notes: m.notes ?? ''
       })) as any
     )
@@ -214,19 +216,39 @@ export async function importMedicinesCsv(file: File): Promise<number> {
   // Upsert by name
   const existing = await storage.getMedicines();
   const byName = new Map(existing.map(m => [m.name.toLowerCase(), m]));
+  
   for (const r of rows) {
     const name = (r['name'] || '').trim();
     if (!name) continue;
+    
     const totalStock = Number(r['totalStock'] || '0') || 0;
     const currentStock = Number(r['currentStock'] || '0') || 0;
-    const dosage = (r['dosage'] || '').trim();
+    const dosage = (r['dosage'] || '').trim() || undefined;
     const notes = (r['notes'] || '').trim() || undefined;
+    const schedule = (r['schedule'] || '').trim() as any || undefined;
+    const category = (r['category'] || '').trim() as any || undefined;
+    
     const existingMed = byName.get(name.toLowerCase());
     if (existingMed) {
-      await storage.updateMedicine(existingMed.id, { totalStock, currentStock, dosage, notes });
+      await storage.updateMedicine(existingMed.id, { 
+        totalStock, 
+        currentStock, 
+        dosage, 
+        notes,
+        schedule,
+        category
+      });
       count++;
     } else {
-      await storage.addMedicine({ name, totalStock, currentStock, dosage, notes });
+      await storage.addMedicine({ 
+        name, 
+        totalStock, 
+        currentStock, 
+        dosage, 
+        notes,
+        schedule,
+        category
+      });
       count++;
     }
   }
