@@ -1,0 +1,12 @@
+{
+  "name": "meditrack",
+  "compatibility_date": "2025-10-29",
+  "build": {
+    "command": "npm run build"
+  },
+  "assets": {
+    "directory": "./dist"
+  }
+}
+
+
