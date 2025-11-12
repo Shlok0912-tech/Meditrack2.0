@@ -38,7 +38,7 @@ export const AddGlucoseDialog = ({ onAdd }: AddGlucoseDialogProps) => {
           Add Reading
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[min(90vh,520px)] overflow-y-auto p-5 sm:p-6">
         <DialogHeader>
           <DialogTitle>Record Glucose Reading</DialogTitle>
           <DialogDescription>

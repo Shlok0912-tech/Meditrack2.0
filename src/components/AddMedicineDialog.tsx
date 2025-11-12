@@ -34,6 +34,7 @@ export const AddMedicineDialog = ({ onAdd, editMedicine, onUpdate, onClose }: Ad
   const [dosage, setDosage] = useState(editMedicine?.dosage ?? "");
   const [notes, setNotes] = useState(editMedicine?.notes ?? "");
   const [schedule, setSchedule] = useState<Medicine["schedule"]>(editMedicine?.schedule ?? undefined);
+  const [category, setCategory] = useState<Medicine["category"]>(editMedicine?.category ?? undefined);
 
   // Open the dialog automatically when an edit target is provided
   useEffect(() => {
@@ -45,6 +46,7 @@ export const AddMedicineDialog = ({ onAdd, editMedicine, onUpdate, onClose }: Ad
       setDosage(editMedicine.dosage ?? "");
       setNotes(editMedicine.notes ?? "");
       setSchedule(editMedicine.schedule ?? undefined);
+      setCategory(editMedicine.category ?? undefined);
       setOpen(true);
     }
   }, [editMedicine]);
@@ -58,6 +60,7 @@ export const AddMedicineDialog = ({ onAdd, editMedicine, onUpdate, onClose }: Ad
         currentStock: parseInt(currentStock),
         dosage,
         schedule,
+        category,
         notes,
       });
     } else {
@@ -67,6 +70,7 @@ export const AddMedicineDialog = ({ onAdd, editMedicine, onUpdate, onClose }: Ad
         currentStock: parseInt(currentStock),
         dosage,
         schedule,
+        category,
         notes,
       });
     }
@@ -80,6 +84,7 @@ export const AddMedicineDialog = ({ onAdd, editMedicine, onUpdate, onClose }: Ad
     setCurrentStock("");
     setDosage("");
     setSchedule(undefined);
+    setCategory(undefined);
     setNotes("");
   };
 
@@ -105,7 +110,7 @@ export const AddMedicineDialog = ({ onAdd, editMedicine, onUpdate, onClose }: Ad
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[min(90vh,640px)] overflow-y-auto p-5 sm:p-6">
         <DialogHeader>
           <DialogTitle>{editMedicine ? "Edit Medicine" : "Add New Medicine"}</DialogTitle>
           <DialogDescription>
@@ -124,7 +129,7 @@ export const AddMedicineDialog = ({ onAdd, editMedicine, onUpdate, onClose }: Ad
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="totalStock">Total Stock</Label>
               <Input
@@ -178,6 +183,25 @@ export const AddMedicineDialog = ({ onAdd, editMedicine, onUpdate, onClose }: Ad
                 <SelectItem value="morning_night">Morning and Night</SelectItem>
                 <SelectItem value="noon_night">Noon and Night</SelectItem>
               <SelectItem value="three_times">3 times</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={category ?? undefined} onValueChange={(v) => setCategory((v === '__none__' ? undefined : v) as Medicine["category"])}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                <SelectItem value="pain_relief">Pain Relief</SelectItem>
+                <SelectItem value="diabetes">Diabetes</SelectItem>
+                <SelectItem value="heart">Heart</SelectItem>
+                <SelectItem value="blood_pressure">Blood Pressure</SelectItem>
+                <SelectItem value="antibiotic">Antibiotic</SelectItem>
+                <SelectItem value="vitamin">Vitamin</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>

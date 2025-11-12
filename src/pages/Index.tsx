@@ -10,7 +10,10 @@ import { TakeMedicineDialog } from "@/components/TakeMedicineDialog";
 import { GlucoseCard } from "@/components/GlucoseCard";
 import { AddGlucoseDialog } from "@/components/AddGlucoseDialog";
 import { HistoryTab } from "@/components/HistoryTab";
-import { EteryBackground } from "@/components/EteryBackground";
+import { EnhancedBackground } from "@/components/EnhancedBackground";
+import { QuickStats } from "@/components/QuickStats";
+import { MedicationReminders } from "@/components/MedicationReminders";
+import { AdvancedSearch } from "@/components/AdvancedSearch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -18,8 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import DosageCalculator from "@/components/DosageCalculator";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
+import { LayoutDashboard, History, BarChart3, Calculator, AlertTriangle, Settings, Activity } from "lucide-react";
 
 const Index = () => {
+  const isMobile = useIsMobile();
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [medicineLogs, setMedicineLogs] = useState<MedicineLog[]>([]);
   const [glucoseReadings, setGlucoseReadings] = useState<GlucoseReading[]>([]);
@@ -34,6 +41,9 @@ const Index = () => {
   const [lowStockSort, setLowStockSort] = useState<"percent_desc" | "percent_asc" | "name">("percent_desc");
   const [refillForId, setRefillForId] = useState<string | null>(null);
   const [refillQuantity, setRefillQuantity] = useState<number>(0);
+  const [filteredMedicines, setFilteredMedicines] = useState<Medicine[]>([]);
+  const primaryTabsTriggerClasses =
+    "flex-shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-xs sm:px-6 sm:py-2.5 sm:text-sm transition-all duration-300 data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground tap-highlight-none touch-target";
 
   const deriveSchedule = (m: Medicine): Medicine["schedule"] | undefined => {
     if (m.schedule) return m.schedule;
@@ -179,6 +189,68 @@ const Index = () => {
     setTakeMedicineOpen(true);
   };
 
+  const handleTakeAllMedicines = async (medicines: Medicine[]) => {
+    if (medicines.length === 0) return;
+
+    try {
+      // Record each medicine with default quantity (1)
+      const updates = medicines.map(async (medicine) => {
+        const quantity = 1; // Default quantity for batch take
+        const prevPercent = medicine.totalStock > 0 ? (medicine.currentStock / medicine.totalStock) * 100 : 100;
+        
+        await storage.addMedicineLog({
+          medicineId: medicine.id,
+          medicineName: medicine.name,
+          quantity,
+          notes: 'Taken via Take All',
+        });
+        
+        await storage.updateMedicine(medicine.id, {
+          currentStock: medicine.currentStock - quantity,
+        });
+
+        return { medicine, prevPercent };
+      });
+
+      await Promise.all(updates);
+
+      // Refresh data
+      const [updatedMedicines, updatedLogs] = await Promise.all([
+        storage.getMedicines(),
+        storage.getMedicineLogs()
+      ]);
+      
+      setMedicines(updatedMedicines);
+      setMedicineLogs(updatedLogs);
+
+      // Check for low stock notifications
+      if (notificationsEnabled) {
+        const results = await Promise.all(updates);
+        results.forEach(({ medicine, prevPercent }) => {
+          const updated = updatedMedicines.find(m => m.id === medicine.id);
+          if (updated && updated.totalStock > 0) {
+            const newPercent = (updated.currentStock / updated.totalStock) * 100;
+            if (prevPercent >= lowStockThreshold && newPercent < lowStockThreshold) {
+              showNotification('Low stock alert', `${updated.name}: ${updated.currentStock} remaining`);
+            }
+          }
+        });
+      }
+      
+      toast({
+        title: "All Medicines Taken",
+        description: `Recorded ${medicines.length} ${medicines.length === 1 ? 'medication' : 'medications'} at ${new Date().toLocaleTimeString()}`,
+      });
+    } catch (error) {
+      console.error('Error taking all medicines:', error);
+      toast({
+        title: "Error",
+        description: "Failed to record all medicines. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleConfirmTakeMedicine = async (quantity: number, notes?: string) => {
     if (!selectedMedicine) return;
     
@@ -291,56 +363,95 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Clean Etery-style Background */}
-      <EteryBackground />
+    <div className="min-h-screen pb-20 sm:pb-0 safe-area-bottom">
+      {/* Enhanced Background with Silk Shader */}
+      <EnhancedBackground />
 
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+      <nav className="sticky top-0 z-50 tap-highlight-none">
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="text-xl font-semibold tracking-tight">
-              Meditrack
+          <div className="flex items-center justify-center h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <div className="text-lg sm:text-xl font-semibold tracking-tight">
+                Meditrack
+              </div>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <section className="py-8 sm:py-12">
+      <section className="py-6 sm:py-8 lg:py-12">
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Tabs defaultValue="dashboard" className="space-y-12">
+          <Tabs defaultValue="dashboard" className="space-y-8 sm:space-y-10 lg:space-y-12">
             <div className="flex justify-center">
-              <TabsList className="liquid-glass rounded-full p-1.5 gap-1 animate-scale-in animate-glow">
-                <TabsTrigger value="dashboard" className="data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground rounded-full px-6 py-2.5 text-sm transition-all duration-300">
-                  Dashboard
-                </TabsTrigger>
-                <TabsTrigger value="history" className="data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground rounded-full px-6 py-2.5 text-sm transition-all duration-300">
-                  History
-                </TabsTrigger>
-                <TabsTrigger value="reports" className="data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground rounded-full px-6 py-2.5 text-sm transition-all duration-300">
-                  Reports
-                </TabsTrigger>
-                <TabsTrigger value="calculator" className="data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground rounded-full px-6 py-2.5 text-sm transition-all duration-300">
-                  Calculator
-                </TabsTrigger>
-                <TabsTrigger value="low-stock" className="data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground rounded-full px-6 py-2.5 text-sm transition-all duration-300">
-                  Low Stock
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground rounded-full px-6 py-2.5 text-sm transition-all duration-300">
-                  Settings
-                </TabsTrigger>
-              </TabsList>
+              <div className="overflow-x-auto scrollbar-hide touch-pan-x smooth-scroll">
+                <TabsList
+                  className={cn(
+                    "liquid-glass inline-flex items-center rounded-full gap-1 animate-scale-in animate-glow mobile-optimized",
+                    isMobile ? "justify-start px-2 py-1.5" : "justify-center p-1.5"
+                  )}
+                >
+                  <TabsTrigger value="dashboard" className={primaryTabsTriggerClasses}>
+                    <LayoutDashboard className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Dashboard</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className={primaryTabsTriggerClasses}>
+                    <History className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">History</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="reports" className={primaryTabsTriggerClasses}>
+                    <BarChart3 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Reports</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="calculator" className={primaryTabsTriggerClasses}>
+                    <Calculator className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Calculator</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="low-stock" className={primaryTabsTriggerClasses}>
+                    <AlertTriangle className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Low Stock</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="settings" className={primaryTabsTriggerClasses}>
+                    <Settings className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Settings</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
             </div>
 
-            <TabsContent value="dashboard" className="space-y-16">
-              {/* Glucose Section */}
-              <div className="space-y-8">
+            <TabsContent value="dashboard" className="space-y-8 sm:space-y-12 lg:space-y-16">
+              {/* Quick Stats Section */}
+              <div className="space-y-6 sm:space-y-8">
                 <div className="text-center space-y-2 animate-fade-in-up">
-                  <h2 className="text-2xl sm:text-3xl font-medium">Glucose Monitor</h2>
-                  <p className="text-muted-foreground">Track your blood glucose levels</p>
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-medium">Dashboard Overview</h2>
+                  <p className="text-sm sm:text-base text-muted-foreground">Your health metrics at a glance</p>
                 </div>
-                <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                <QuickStats 
+                  medicines={medicines}
+                  medicineLogs={medicineLogs}
+                  glucoseReadings={glucoseReadings}
+                  lowStockThreshold={lowStockThreshold}
+                />
+              </div>
+
+              {/* Medication Reminders */}
+              <div className="max-w-3xl mx-auto animate-fade-in-up animate-delay-300">
+                <MedicationReminders 
+                  medicines={medicines}
+                  onTakeMedicine={handleTakeMedicine}
+                  onTakeAll={handleTakeAllMedicines}
+                />
+              </div>
+
+              {/* Glucose Section */}
+              <div className="space-y-6 sm:space-y-8">
+                <div className="text-center space-y-2 animate-fade-in-up">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-medium">Glucose Monitor</h2>
+                  <p className="text-sm sm:text-base text-muted-foreground">Track your blood glucose levels</p>
+                </div>
+                <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 max-w-5xl mx-auto">
                   <div className="animate-fade-in-up animate-delay-100">
                     <GlucoseCard readings={glucoseReadings} />
                   </div>
@@ -351,28 +462,20 @@ const Index = () => {
               </div>
 
               {/* Medicine Section */}
-              <div className="space-y-8">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in-up">
+              <div className="space-y-6 sm:space-y-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in-up">
                   <div>
-                    <h2 className="text-2xl sm:text-3xl font-medium mb-2">Medicine Inventory</h2>
-                    <p className="text-muted-foreground">Manage your medications</p>
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-medium mb-2">Medicine Inventory</h2>
+                    <p className="text-sm sm:text-base text-muted-foreground">Manage your medications</p>
                   </div>
-                  <div className="flex items-center gap-3 flex-wrap animate-slide-in-left animate-delay-200">
-                    <Tabs value={scheduleFilter} onValueChange={(v) => setScheduleFilter(v as any)}>
-                      <TabsList className="etery-card h-9">
-                        <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-                        <TabsTrigger value="morning" className="text-xs">Morning</TabsTrigger>
-                        <TabsTrigger value="noon" className="text-xs">Noon</TabsTrigger>
-                        <TabsTrigger value="night" className="text-xs">Night</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto animate-slide-in-left animate-delay-200">
                     <AddMedicineDialog 
                       onAdd={handleAddMedicine} 
                       editMedicine={editMedicineForDialog || undefined}
                       onUpdate={handleUpdateMedicine}
                       onClose={() => setEditMedicineForDialog(null)}
                     />
-                    <Button variant="outline" size="sm" onClick={() => exportMedicinesCsv()} className="hover:animate-glow">
+                    <Button variant="outline" size="sm" onClick={() => exportMedicinesCsv()} className="hover:animate-glow touch-target">
                       Export
                     </Button>
                     <input id="import-medicines" type="file" accept=".csv,text/csv" className="hidden" onChange={async (e) => {
@@ -381,27 +484,35 @@ const Index = () => {
                       await importMedicinesCsv(file);
                       window.location.reload();
                     }} />
-                    <Button variant="outline" size="sm" onClick={() => document.getElementById('import-medicines')?.click()} className="hover:animate-glow">
+                    <Button variant="outline" size="sm" onClick={() => document.getElementById('import-medicines')?.click()} className="hover:animate-glow touch-target">
                       Import
                     </Button>
                   </div>
                 </div>
 
+                {/* Advanced Search */}
+                <div className="animate-fade-in-up animate-delay-100">
+                  <AdvancedSearch 
+                    medicines={medicines}
+                    onFilteredResults={setFilteredMedicines}
+                    lowStockThreshold={lowStockThreshold}
+                  />
+                </div>
+
                 {medicines.length === 0 ? (
-                  <div className="text-center py-20 animate-scale-in">
-                    <div className="etery-card rounded-2xl p-12 inline-block max-w-md animate-glow">
-                      <p className="text-muted-foreground">No medicines yet. Add your first medicine to get started.</p>
+                  <div className="text-center py-12 sm:py-20 animate-scale-in">
+                    <div className="etery-card rounded-2xl p-8 sm:p-12 inline-block max-w-md animate-glow">
+                      <p className="text-sm sm:text-base text-muted-foreground">No medicines yet. Add your first medicine to get started.</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {medicines
-                      .filter(m => matchesScheduleFilter(m, scheduleFilter))
+                  <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {(filteredMedicines.length > 0 ? filteredMedicines : medicines)
                       .map((medicine, index) => (
                       <div 
                         key={medicine.id} 
                         className="animate-fade-in-up"
-                        style={{ animationDelay: `${index * 0.1}s` }}
+                        style={{ animationDelay: `${index * 0.05}s` }}
                       >
                         <MedicineCard
                           medicine={medicine}
@@ -411,6 +522,7 @@ const Index = () => {
                             setEditMedicineForDialog(med);
                           }}
                           onDelete={handleDeleteMedicine}
+                          medicineLogs={medicineLogs}
                         />
                       </div>
                     ))}

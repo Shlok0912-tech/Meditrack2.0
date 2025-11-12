@@ -7,6 +7,7 @@ export interface Medicine {
   currentStock: number;
   dosage: string;
   schedule?: 'morning' | 'noon' | 'night' | 'morning_noon' | 'morning_night' | 'noon_night' | 'three_times';
+  category?: 'pain_relief' | 'diabetes' | 'heart' | 'blood_pressure' | 'antibiotic' | 'vitamin' | 'other';
   notes?: string;
   createdAt: string;
 }

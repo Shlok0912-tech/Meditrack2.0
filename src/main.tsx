@@ -67,8 +67,8 @@ function createInstallButton() {
   btn.style.borderRadius = "8px";
   btn.style.border = "none";
   btn.style.color = "#fff";
-  btn.style.background = "#4CAF50";
-  btn.style.boxShadow = "0 4px 12px rgba(76, 175, 80, 0.4)";
+  btn.style.background = "hsl(217, 91%, 60%)"; // Primary blue from website
+  btn.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.4)";
   btn.style.fontSize = "14px";
   btn.style.fontWeight = "600";
   btn.style.cursor = "pointer";
@@ -78,11 +78,11 @@ function createInstallButton() {
   
   // Hover effect
   btn.addEventListener("mouseenter", () => {
-    btn.style.background = "#45a049";
+    btn.style.background = "hsl(217, 91%, 55%)"; // Slightly darker on hover
     btn.style.transform = "scale(1.05)";
   });
   btn.addEventListener("mouseleave", () => {
-    btn.style.background = "#4CAF50";
+    btn.style.background = "hsl(217, 91%, 60%)";
     btn.style.transform = "scale(1)";
   });
   

@@ -35,7 +35,7 @@ export const TakeMedicineDialog = ({ medicine, open, onOpenChange, onConfirm }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[min(90vh,520px)] overflow-y-auto p-5 sm:p-6">
         <DialogHeader>
           <DialogTitle>Take {medicine.name}</DialogTitle>
           <DialogDescription>
