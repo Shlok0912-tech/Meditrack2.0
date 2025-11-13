@@ -14,6 +14,12 @@ import { EnhancedBackground } from "@/components/EnhancedBackground";
 import { QuickStats } from "@/components/QuickStats";
 import { MedicationReminders } from "@/components/MedicationReminders";
 import { AdvancedSearch } from "@/components/AdvancedSearch";
+import { DrugInteractionChecker } from "@/components/DrugInteractionChecker";
+import { VoiceAssistant } from "@/components/VoiceAssistant";
+import { PredictiveAnalyticsPanel } from "@/components/PredictiveAnalyticsPanel";
+import { AIHealthInsights } from "@/components/AIHealthInsights";
+import { MedicineScanner } from "@/components/MedicineScanner";
+import { HealthReportExporter } from "@/components/HealthReportExporter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -23,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import DosageCalculator from "@/components/DosageCalculator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, History, BarChart3, Calculator, AlertTriangle, Settings, Activity } from "lucide-react";
+import { LayoutDashboard, History, BarChart3, Calculator, AlertTriangle, Settings, Activity, Brain, Mic, TrendingUp, ShieldAlert, ScanLine, FileText } from "lucide-react";
 
 const Index = () => {
   const isMobile = useIsMobile();
@@ -413,6 +419,30 @@ const Index = () => {
                     <AlertTriangle className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Low Stock</span>
                   </TabsTrigger>
+                  <TabsTrigger value="ai-insights" className={primaryTabsTriggerClasses}>
+                    <Brain className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">AI Insights</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="predictions" className={primaryTabsTriggerClasses}>
+                    <TrendingUp className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Predictions</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="interactions" className={primaryTabsTriggerClasses}>
+                    <ShieldAlert className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Interactions</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="voice" className={primaryTabsTriggerClasses}>
+                    <Mic className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Voice</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="scanner" className={primaryTabsTriggerClasses}>
+                    <ScanLine className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Scanner</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="export" className={primaryTabsTriggerClasses}>
+                    <FileText className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Export</span>
+                  </TabsTrigger>
                   <TabsTrigger value="settings" className={primaryTabsTriggerClasses}>
                     <Settings className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Settings</span>
@@ -678,6 +708,140 @@ const Index = () => {
                 </div>
               );
             })()}
+          </TabsContent>
+
+          <TabsContent value="ai-insights" className="space-y-6">
+            <div className="text-center space-y-2 animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-medium">AI Health Insights</h2>
+              <p className="text-muted-foreground">Personalized health recommendations powered by AI</p>
+            </div>
+            <AIHealthInsights 
+              medicines={medicines}
+              medicineLogs={medicineLogs}
+              glucoseReadings={glucoseReadings}
+            />
+          </TabsContent>
+
+          <TabsContent value="predictions" className="space-y-6">
+            <div className="text-center space-y-2 animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-medium">Predictive Analytics</h2>
+              <p className="text-muted-foreground">AI-powered predictions for medicine consumption</p>
+            </div>
+            <PredictiveAnalyticsPanel 
+              medicines={medicines}
+              medicineLogs={medicineLogs}
+            />
+          </TabsContent>
+
+          <TabsContent value="interactions" className="space-y-6">
+            <div className="text-center space-y-2 animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-medium">Drug Interaction Checker</h2>
+              <p className="text-muted-foreground">AI analysis of potential medicine interactions</p>
+            </div>
+            <DrugInteractionChecker medicines={medicines} />
+          </TabsContent>
+
+          <TabsContent value="voice" className="space-y-6">
+            <div className="text-center space-y-2 animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-medium">Voice Assistant</h2>
+              <p className="text-muted-foreground">Control MediTrack with voice commands</p>
+            </div>
+            <div className="max-w-4xl mx-auto">
+              <VoiceAssistant 
+                medicines={medicines}
+                onTakeMedicine={async (medicineName, quantity) => {
+                  const medicine = medicines.find(m => m.name === medicineName);
+                  if (medicine) {
+                    try {
+                      const prevPercent = medicine.totalStock > 0 ? (medicine.currentStock / medicine.totalStock) * 100 : 100;
+                      await storage.addMedicineLog({
+                        medicineId: medicine.id,
+                        medicineName: medicine.name,
+                        quantity,
+                        notes: 'Taken via Voice Command',
+                      });
+                      
+                      await storage.updateMedicine(medicine.id, {
+                        currentStock: medicine.currentStock - quantity,
+                      });
+                      
+                      const [updatedMedicines, updatedLogs] = await Promise.all([
+                        storage.getMedicines(),
+                        storage.getMedicineLogs()
+                      ]);
+                      
+                      setMedicines(updatedMedicines);
+                      setMedicineLogs(updatedLogs);
+                      
+                      const updated = updatedMedicines.find(m => m.id === medicine.id);
+                      if (updated && updated.totalStock > 0) {
+                        const newPercent = (updated.currentStock / updated.totalStock) * 100;
+                        if (notificationsEnabled && prevPercent >= lowStockThreshold && newPercent < lowStockThreshold) {
+                          showNotification('Low stock alert', `${updated.name}: ${updated.currentStock} remaining`);
+                        }
+                      }
+                      
+                      toast({
+                        title: "Medicine Taken",
+                        description: `${quantity} ${medicine.name} recorded via voice command`,
+                      });
+                    } catch (error) {
+                      console.error('Error taking medicine:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to record medicine intake.",
+                        variant: "destructive",
+                      });
+                    }
+                  }
+                }}
+                onAddGlucose={handleAddGlucose}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="scanner" className="space-y-6">
+            <div className="text-center space-y-2 animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-medium">Medicine Scanner</h2>
+              <p className="text-muted-foreground">Scan medicine labels to extract information</p>
+            </div>
+            <div className="max-w-4xl mx-auto">
+              <MedicineScanner 
+                onMedicineExtracted={async (data) => {
+                  // Auto-populate add medicine dialog with scanned data
+                  try {
+                    await handleAddMedicine({
+                      name: data.name,
+                      totalStock: 0,
+                      currentStock: 0,
+                      dosage: data.dosage || '',
+                      notes: data.notes
+                    });
+                    
+                    toast({
+                      title: "Medicine Scanned",
+                      description: `${data.name} has been added. Please update stock levels.`,
+                    });
+                  } catch (error) {
+                    console.error('Error adding scanned medicine:', error);
+                  }
+                }}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="export" className="space-y-6">
+            <div className="text-center space-y-2 animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-medium">Health Reports</h2>
+              <p className="text-muted-foreground">Generate comprehensive reports for healthcare providers</p>
+            </div>
+            <div className="max-w-4xl mx-auto">
+              <HealthReportExporter 
+                medicines={medicines}
+                medicineLogs={medicineLogs}
+                glucoseReadings={glucoseReadings}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="settings">
