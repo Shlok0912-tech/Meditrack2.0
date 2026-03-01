@@ -32,89 +32,116 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
         registerType: "autoUpdate",
-        injectRegister: 'auto',
-        includeAssets: ['Appiconandlogo.jpg'],
+        injectRegister: 'script',
+        injectManifest: {
+          injectionPoint: 'self.__WB_MANIFEST',
+        },
+        includeAssets: [
+          'icon-192.png',
+          'icon-512.png',
+          'icon-512-maskable.png',
+          'screenshot-wide.png',
+          'screenshot-narrow.png',
+          'Appiconandlogo.jpg',
+        ],
         manifest: {
           id: "/",
           name: "Meditrack",
           short_name: "Meditrack",
           description: "Track your medicines and glucose levels with an easy-to-use personal health tracker",
-          theme_color: "#4CAF50",
-          background_color: "#ffffff",
-          display: "standalone",
-          display_override: ["standalone", "minimal-ui"],
-          orientation: "portrait",
-          scope: "/",
           start_url: "/",
+          scope: "/",
+          display: "standalone",
+          display_override: ["window-controls-overlay", "tabbed", "standalone", "minimal-ui"],
+          orientation: "portrait",
+          theme_color: "#3B82F6",
+          background_color: "#0a0a0a",
+          lang: "en",
+          dir: "ltr",
+          categories: ["health", "medical", "lifestyle"],
+          iarc_rating_id: "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+          prefer_related_applications: false,
+          related_applications: [],
           icons: [
+            { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: "/icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          ],
+          screenshots: [
             {
-              src: "/Appiconandlogo.jpg",
-              sizes: "192x192",
-              type: "image/jpeg"
+              src: "/screenshot-wide.png",
+              sizes: "1280x720",
+              type: "image/png",
+              form_factor: "wide",
+              label: "Meditrack on desktop",
             },
             {
-              src: "/Appiconandlogo.jpg",
-              sizes: "256x256",
-              type: "image/jpeg"
+              src: "/screenshot-narrow.png",
+              sizes: "390x844",
+              type: "image/png",
+              form_factor: "narrow",
+              label: "Meditrack on mobile",
+            },
+          ],
+          shortcuts: [
+            {
+              name: "Add Medicine",
+              short_name: "Add Med",
+              description: "Quickly add a new medicine",
+              url: "/?action=add-medicine",
+              icons: [{ src: "/icon-192.png", sizes: "192x192" }],
             },
             {
-              src: "/Appiconandlogo.jpg",
-              sizes: "384x384",
-              type: "image/jpeg"
+              name: "Log Glucose",
+              short_name: "Glucose",
+              description: "Log a blood glucose reading",
+              url: "/?action=add-glucose",
+              icons: [{ src: "/icon-192.png", sizes: "192x192" }],
             },
+          ],
+          // @ts-expect-error – extended manifest fields not yet in VitePWA types
+          launch_handler: { client_mode: "focus-existing" },
+          share_target: {
+            action: "/",
+            method: "GET",
+            params: { title: "title", text: "text", url: "url" },
+          },
+          file_handlers: [
             {
-              src: "/Appiconandlogo.jpg",
-              sizes: "512x512",
-              type: "image/jpeg"
+              action: "/",
+              accept: { "text/plain": [".txt"], "application/json": [".json"] },
             },
+          ],
+          protocol_handlers: [
+            { protocol: "web+meditrack", url: "/?protocol=%s" },
+          ],
+          edge_side_panel: { preferred_width: 400 },
+          note_taking: { new_note_url: "/?action=new-note" },
+          scope_extensions: [],
+          widgets: [
             {
-              src: "/Appiconandlogo.jpg",
-              sizes: "512x512",
-              type: "image/jpeg",
-              purpose: "maskable"
-            }
-          ]
-        },
-        workbox: {
-          clientsClaim: true,
-          skipWaiting: true,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}'],
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
+              name: "Meditrack Quick View",
+              tag: "meditrack-widget",
+              description: "View your medicines and glucose at a glance",
+              template: "generic-widget",
+              ms_ac_template: "/widget-template.json",
+              data: "/widget-data.json",
+              type: "application/json",
+              auth: false,
+              update: 3600,
+              icons: [{ src: "/icon-192.png", sizes: "192x192" }],
+              screenshots: [{ src: "/screenshot-narrow.png", sizes: "390x844", label: "Meditrack widget" }],
             },
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-static-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            }
-          ]
-        },
+          ],
+        } as any,
         devOptions: {
-          enabled: false // Disable in dev mode for faster reload
-        }
-      })
+          enabled: false,
+        },
+      }),
     ],
     resolve: {
       alias: {
